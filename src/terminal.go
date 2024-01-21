@@ -968,7 +968,7 @@ func (t *Terminal) parsePrompt(prompt string) (func(), int) {
 	}
 	output := func() {
 		t.printHighlighted(
-			Result{item: item}, tui.ColPrompt, tui.ColPrompt, false, false)
+			Result{item: item}, tui.ColPrompt, tui.ColPrompt, false, false, false)
 	}
 	_, promptLen := t.processTabs([]rune(trimmed), 0)
 
@@ -1743,7 +1743,7 @@ func (t *Terminal) printHeader() {
 		t.move(line, 0, true)
 		t.window.Print("  ")
 		t.printHighlighted(Result{item: item},
-			tui.ColHeader, tui.ColHeader, false, false)
+			tui.ColHeader, tui.ColHeader, false, false, true)
 	}
 }
 
@@ -1822,7 +1822,7 @@ func (t *Terminal) printItem(result Result, line int, i int, current bool, bar b
 		} else {
 			t.window.CPrint(tui.ColCurrentSelectedEmpty, t.markerEmpty)
 		}
-		newLine.width = t.printHighlighted(result, tui.ColCurrent, tui.ColCurrentMatch, true, true)
+		newLine.width = t.printHighlighted(result, tui.ColCurrent, tui.ColCurrentMatch, true, true, true)
 	} else {
 		if len(label) == 0 {
 			t.window.CPrint(tui.ColCursorEmpty, t.pointerEmpty)
@@ -1834,7 +1834,7 @@ func (t *Terminal) printItem(result Result, line int, i int, current bool, bar b
 		} else {
 			t.window.Print(t.markerEmpty)
 		}
-		newLine.width = t.printHighlighted(result, tui.ColNormal, tui.ColMatch, false, true)
+		newLine.width = t.printHighlighted(result, tui.ColNormal, tui.ColMatch, false, true, true)
 	}
 	fillSpaces := prevLine.width - newLine.width
 	if fillSpaces > 0 {
@@ -1882,12 +1882,65 @@ func (t *Terminal) overflow(runes []rune, max int) bool {
 	return t.displayWidthWithLimit(runes, 0, max) > max
 }
 
-func (t *Terminal) printHighlighted(result Result, colBase tui.ColorPair, colMatch tui.ColorPair, current bool, match bool) int {
+// https://stackoverflow.com/a/71624929
+func Map[T, U any](ts []T, f func(T, int) U) []U {
+    us := make([]U, len(ts))
+    for i := range ts {
+        us[i] = f(ts[i], i)
+    }
+    return us
+}
+
+func (t *Terminal) printHighlighted(
+  result Result, 
+  colBase tui.ColorPair, 
+  colMatch tui.ColorPair, 
+  current bool, 
+  match bool,
+  format bool,
+) int {
 	item := result.item
 
-	// Overflow
-	text := make([]rune, item.text.Length())
-	copy(text, item.text.ToRunes())
+        var text []rune
+	// text = make([]rune, item.text.Length())
+	// copy(text, item.text.ToRunes())
+
+        if (format) {
+          var textStr string = item.text.ToString()
+          // get the index of the first space in textStr
+
+          // write the string textStr to a file 
+
+          // open a file for append
+          // get the index of the first space in textStr
+          var parts = strings.Split(textStr, "/")
+          var shortened = Map(parts, func(s string, i int) string { 
+            // return s
+            if i < len(parts) - 1 {
+              return s[0:util.Min(len(s), 3)] + "?"
+            } else {
+              return s
+            }
+          })
+          var joined = strings.Join(shortened, "/")
+
+          // var joined = textStr[3:]
+          var runes = []rune(joined)
+
+          text = make([]rune, len(runes))
+          copy(text, runes)
+
+          // f, err := os.OpenFile("/home/amagee/go.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+          // if (err != nil) {
+          // }
+          // f.WriteString(textStr + "\n")
+          // f.WriteString(joined + "\n")
+          // f.Close()
+        } else {
+          text = make([]rune, item.text.Length())
+          copy(text, item.text.ToRunes())
+        }
+
 	matchOffsets := []Offset{}
 	var pos *[]int
 	if match && t.merger.pattern != nil {
